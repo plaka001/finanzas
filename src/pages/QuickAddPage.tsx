@@ -239,7 +239,7 @@ export default function QuickAddPage() {
       </div>
 
       {toast && (
-        <div className="fixed inset-x-4 bottom-6 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-zinc-900 px-4 py-3 text-sm text-zinc-100 shadow-xl dark:bg-zinc-100 dark:text-zinc-900">
+        <div className="toast-in fixed inset-x-4 bottom-6 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-zinc-900 px-4 py-3 text-sm text-zinc-100 shadow-xl dark:bg-zinc-100 dark:text-zinc-900">
           <span className="line-clamp-1">✓ {toast.message}</span>
           {toast.result && (
             <button

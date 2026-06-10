@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { endOfMonth, format, isSameMonth, parseISO, startOfMonth } from 'date-fns'
+import { endOfMonth, format, isSameMonth, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CalendarPlus, Check, LogOut, Moon, Sun, TriangleAlert } from 'lucide-react'
+import { BarChart3, CalendarPlus, Check, LogOut, Moon, Sun, TrendingDown, TrendingUp, TriangleAlert } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
 import { useAuth } from '../auth/AuthProvider'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -30,6 +31,9 @@ export default function DashboardPage() {
   const monthStart = format(startOfMonth(today), 'yyyy-MM-dd')
   const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd')
   const monthLabel = format(today, 'MMMM yyyy', { locale: es })
+  const prevMonth = subMonths(today, 1)
+  const prevStart = format(startOfMonth(prevMonth), 'yyyy-MM-dd')
+  const prevEnd = format(endOfMonth(prevMonth), 'yyyy-MM-dd')
 
   const { data: monthTx = [] } = useQuery({
     queryKey: ['month-summary', monthStart],
@@ -63,6 +67,19 @@ export default function DashboardPage() {
         .from('debt_payments')
         .select('debt_id, paid_at')
         .gte('paid_at', monthStart)
+      if (error) throw error
+      return data
+    },
+  })
+
+  const { data: prevMonthTx = [] } = useQuery({
+    queryKey: ['month-summary', prevStart],
+    queryFn: async (): Promise<MonthTx[]> => {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('amount, type, category_id, note, occurred_at')
+        .gte('occurred_at', prevStart)
+        .lte('occurred_at', prevEnd)
       if (error) throw error
       return data
     },
@@ -184,11 +201,32 @@ export default function DashboardPage() {
   const budget = settings?.monthly_essential_budget ?? 0
   const overBudget = budget > 0 && expense > budget
 
+  // Fugas: Suscripciones + Comida fuera/Rappi, este mes vs el anterior
+  const leaks = useMemo(() => {
+    const leakIds = new Set(
+      categories
+        .filter((c) => c.name === 'Suscripciones' || c.name === 'Comida fuera/Rappi')
+        .map((c) => c.id),
+    )
+    const sumLeaks = (txs: MonthTx[]) =>
+      txs
+        .filter((t) => t.type === 'expense' && t.category_id && leakIds.has(t.category_id))
+        .reduce((sum, t) => sum + t.amount, 0)
+    return { current: sumLeaks(monthTx), previous: sumLeaks(prevMonthTx) }
+  }, [categories, monthTx, prevMonthTx])
+
   return (
     <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start">
       <header className="flex items-center justify-between md:col-span-2">
         <h1 className="text-lg font-bold capitalize">{monthLabel}</h1>
         <div className="flex gap-1">
+          <Link
+            to="/reportes"
+            aria-label="Reportes"
+            className="rounded-full p-2.5 text-zinc-500 transition hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-card"
+          >
+            <BarChart3 className="size-5" />
+          </Link>
           <button
             type="button"
             onClick={toggle}
@@ -377,13 +415,45 @@ export default function DashboardPage() {
         )}
       </section>
 
+      <section className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+          Fugas del mes
+        </h2>
+        <p className="mt-0.5 text-[10px] text-zinc-500 dark:text-zinc-400">
+          Suscripciones + comida fuera/Rappi
+        </p>
+        <p className="tnum mt-2 text-2xl font-bold">{formatCOP(leaks.current)}</p>
+        {leaks.previous > 0 ? (
+          <p
+            className={`mt-1 flex items-center gap-1 text-xs font-medium ${
+              leaks.current > leaks.previous ? 'text-rose-400' : 'text-emerald-400'
+            }`}
+          >
+            {leaks.current > leaks.previous ? (
+              <TrendingUp className="size-3.5" />
+            ) : (
+              <TrendingDown className="size-3.5" />
+            )}
+            <span className="tnum">
+              {leaks.current > leaks.previous ? '+' : '−'}
+              {formatCOP(Math.abs(leaks.current - leaks.previous))}
+            </span>
+            <span className="font-normal text-zinc-500 dark:text-zinc-400">vs mes anterior ({formatCOP(leaks.previous)})</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Sin referencia del mes anterior todavía.
+          </p>
+        )}
+      </section>
+
       {calendarSheet && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          className="sheet-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/50"
           onClick={() => setCalendarSheet(false)}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-safe dark:bg-card"
+            className="sheet-panel w-full max-w-md rounded-t-3xl bg-white p-5 pb-safe dark:bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-bold">Recordatorios en tu calendario</h2>

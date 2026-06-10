@@ -8,6 +8,7 @@ import QuickAddPage from './pages/QuickAddPage'
 import DebtsPage from './pages/DebtsPage'
 import DebtDetailPage from './pages/DebtDetailPage'
 import GoalsPage from './pages/GoalsPage'
+import ReportsPage from './pages/ReportsPage'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/deudas" element={<DebtsPage />} />
         <Route path="/deudas/:id" element={<DebtDetailPage />} />
         <Route path="/metas" element={<GoalsPage />} />
+        <Route path="/reportes" element={<ReportsPage />} />
       </Route>
       <Route path="/agregar" element={<QuickAddPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

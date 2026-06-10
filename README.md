@@ -33,6 +33,7 @@ Abrir la URL en Safari → Compartir → **Agregar a pantalla de inicio**.
 
 - `src/auth/` — sesión Supabase (login, provider)
 - `src/components/` — layout, bottom nav
-- `src/pages/` — Inicio · Movimientos · Agregar (quick add) · Deudas · Metas
-- `src/lib/` — cliente Supabase, formato COP
+- `src/pages/` — Inicio · Movimientos · Agregar (quick add) · Deudas (+detalle) · Metas · Reportes
+- `src/lib/` — cliente Supabase, formato COP, cola offline, .ics, CSV, series de deuda
 - `supabase/migrations/` — esquema con RLS + triggers y seed con datos reales
+- `supabase/functions/` — Edge Function de recordatorios push (opcional, ver `docs/web-push.md`)

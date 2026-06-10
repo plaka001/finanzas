@@ -25,9 +25,9 @@ export default function AmountDateSheet({
   const amount = parseAmountInput(amountStr)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onCancel}>
+    <div className="sheet-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onCancel}>
       <div
-        className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-safe dark:bg-card"
+        className="sheet-panel w-full max-w-md rounded-t-3xl bg-white p-5 pb-safe dark:bg-card"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-bold">{title}</h2>
