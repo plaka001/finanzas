@@ -44,6 +44,22 @@ body {
   padding-top: env(safe-area-inset-top);
 }
 
+/* Confetti de celebración (deuda saldada) */
+.confetti-piece {
+  position: absolute;
+  top: -5%;
+  border-radius: 1px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translateY(110vh) rotate(720deg);
+  }
+}
+
 /* Foco visible para teclado, sin ensuciar el tap táctil */
 :focus-visible {
   outline: 2px solid #34d399;

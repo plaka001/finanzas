@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage'
 import TransactionsPage from './pages/TransactionsPage'
 import QuickAddPage from './pages/QuickAddPage'
 import DebtsPage from './pages/DebtsPage'
+import DebtDetailPage from './pages/DebtDetailPage'
 import GoalsPage from './pages/GoalsPage'
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/movimientos" element={<TransactionsPage />} />
         <Route path="/deudas" element={<DebtsPage />} />
+        <Route path="/deudas/:id" element={<DebtDetailPage />} />
         <Route path="/metas" element={<GoalsPage />} />
       </Route>
       <Route path="/agregar" element={<QuickAddPage />} />
