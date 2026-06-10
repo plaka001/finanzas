@@ -26,7 +26,7 @@ export default function LoginPage() {
             <Wallet className="size-8 text-emerald-400" />
           </div>
           <h1 className="text-2xl font-bold">Panorama</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Tus finanzas, claras.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Rumbo a deuda cero.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

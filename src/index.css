@@ -1,11 +1,18 @@
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource/space-mono/400.css';
+@import '@fontsource/space-mono/700.css';
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-surface: #0a0a0f;
-  --color-card: #16161f;
-  --color-card-hover: #1e1e2a;
+  /* Noche petróleo: oscuro con tinte azul-verde, no negro puro */
+  --color-surface: #0b1014;
+  --color-card: #131a20;
+  --color-card-hover: #1c252d;
+
+  --font-sans: 'Space Grotesk Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SF Mono', monospace;
 }
 
 html {
@@ -13,13 +20,8 @@ html {
 }
 
 body {
-  @apply bg-zinc-100 text-zinc-900 antialiased;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  @apply bg-stone-100 text-zinc-900 antialiased;
+  font-family: var(--font-sans);
   overscroll-behavior-y: none;
 }
 
@@ -27,9 +29,11 @@ body {
   @apply bg-surface text-zinc-100;
 }
 
-/* Montos siempre con números tabulares */
+/* Cifras de ledger: todos los montos en mono, tabulares por naturaleza */
 .tnum {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 /* Safe areas iOS */
@@ -38,4 +42,20 @@ body {
 }
 .pt-safe {
   padding-top: env(safe-area-inset-top);
+}
+
+/* Foco visible para teclado, sin ensuciar el tap táctil */
+:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

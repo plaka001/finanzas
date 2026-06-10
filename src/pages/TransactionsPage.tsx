@@ -149,7 +149,7 @@ export default function TransactionsPage() {
   )
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-md flex-col gap-3">
       <header className="flex items-center justify-between">
         <h1 className="text-lg font-bold">Movimientos</h1>
         <div className="flex items-center gap-1">
@@ -248,7 +248,7 @@ export default function TransactionsPage() {
         <p className="py-8 text-center text-sm text-zinc-500">Cargando…</p>
       ) : groups.length === 0 ? (
         <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          Sin movimientos en este período.
+          Nada registrado en este período. El botón ➕ registra el primero.
         </p>
       ) : (
         <div className="flex flex-col gap-4">

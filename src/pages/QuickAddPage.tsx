@@ -148,7 +148,7 @@ export default function QuickAddPage() {
 
       <div className="py-4 text-center">
         <p
-          className={`tnum text-5xl font-bold ${
+          className={`tnum font-bold ${digits.length > 8 ? 'text-4xl' : 'text-5xl'} ${
             amount > 0
               ? type === 'expense'
                 ? 'text-rose-400'

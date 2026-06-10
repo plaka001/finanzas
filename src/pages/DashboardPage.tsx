@@ -154,8 +154,8 @@ export default function DashboardPage() {
   const overBudget = budget > 0 && expense > budget
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start">
+      <header className="flex items-center justify-between md:col-span-2">
         <h1 className="text-lg font-bold capitalize">{monthLabel}</h1>
         <div className="flex gap-1">
           <button
@@ -177,23 +177,25 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Excedente del mes</p>
-        <p className={`tnum mt-1 text-3xl font-bold ${surplus >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+      <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card md:col-span-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400">
+          Excedente del mes
+        </p>
+        <p className={`tnum mt-2 text-4xl font-bold ${surplus >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
           {formatCOP(surplus)}
         </p>
-        <div className="mt-3 flex gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-          <span>
-            Ingresos <span className="tnum font-semibold text-emerald-400">{formatCOP(income)}</span>
+        <div className="mt-4 flex gap-6 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <span className="flex flex-col gap-0.5">
+            Ingresos <span className="tnum text-sm font-bold text-emerald-400">{formatCOP(income)}</span>
           </span>
-          <span>
-            Gastos <span className="tnum font-semibold text-rose-400">{formatCOP(expense)}</span>
+          <span className="flex flex-col gap-0.5">
+            Gastos <span className="tnum text-sm font-bold text-rose-400">{formatCOP(expense)}</span>
           </span>
         </div>
       </section>
 
       {overBudget && (
-        <div className="flex items-center gap-2 rounded-xl bg-amber-500/15 px-3 py-2.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-2 rounded-xl bg-amber-500/15 px-3 py-2.5 text-xs font-medium text-amber-600 dark:text-amber-400 md:col-span-2">
           <TriangleAlert className="size-4 shrink-0" />
           Los gastos del mes ({formatCOP(expense)}) superan el presupuesto esencial ({formatCOP(budget)}).
         </div>
@@ -205,7 +207,7 @@ export default function DashboardPage() {
         </h2>
         {upcoming.length === 0 ? (
           <p className="rounded-2xl bg-white p-4 text-sm text-zinc-500 shadow-sm dark:bg-card dark:text-zinc-400">
-            Nada por pagar en los próximos 7 días. 🎉
+            Semana libre de pagos. El excedente puede ir a un abono de capital.
           </p>
         ) : (
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
@@ -264,7 +266,7 @@ export default function DashboardPage() {
         </h2>
         {topCategories.length === 0 ? (
           <p className="py-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Aún no hay gastos este mes.
+            Sin gastos este mes. Registra el primero con el botón ➕.
           </p>
         ) : (
           <>

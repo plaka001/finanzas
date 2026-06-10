@@ -13,7 +13,7 @@ export function useDarkMode() {
     localStorage.setItem(STORAGE_KEY, dark ? 'dark' : 'light')
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', dark ? '#0a0a0f' : '#f4f4f5')
+      ?.setAttribute('content', dark ? '#0b1014' : '#f5f5f4')
   }, [dark])
 
   return { dark, toggle: () => setDark((d) => !d) }
