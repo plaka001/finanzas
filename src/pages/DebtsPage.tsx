@@ -1,19 +1,49 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ChevronRight, Plus } from 'lucide-react'
+import { useAuth } from '../auth/AuthProvider'
 import { formatCOP } from '../lib/format'
+import { createDebt, type DebtInput } from '../lib/debts'
 import { useDebts } from '../hooks/useDebts'
+import DebtFormSheet from '../components/DebtFormSheet'
 import type { Debt } from '../types'
 
 export default function DebtsPage() {
+  const { session } = useAuth()
+  const queryClient = useQueryClient()
   const { data: debts = [], isLoading } = useDebts()
+  const [creating, setCreating] = useState(false)
 
-  const active = debts.filter((d) => d.status === 'active')
-  const paidOff = debts.filter((d) => d.status === 'paid_off')
+  const visible = debts.filter((d) => !d.archived)
+  const active = visible.filter((d) => d.status === 'active')
+  const paidOff = visible.filter((d) => d.status === 'paid_off')
   const totalBalance = active.reduce((sum, d) => sum + d.current_balance, 0)
+
+  const create = useMutation({
+    mutationFn: (input: DebtInput) => {
+      if (!session) throw new Error('Sin sesión')
+      return createDebt(session.user.id, input)
+    },
+    onSuccess: () => {
+      setCreating(false)
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['recurring-payments'] })
+    },
+  })
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-lg font-bold">Deudas</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold">Deudas</h1>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-500 transition active:scale-95"
+        >
+          <Plus className="size-3.5" /> Nueva deuda
+        </button>
+      </div>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
         <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400">
@@ -44,6 +74,16 @@ export default function DebtsPage() {
             </>
           )}
         </div>
+      )}
+
+      {creating && (
+        <DebtFormSheet
+          debt={null}
+          hasPayments={false}
+          saving={create.isPending}
+          onCancel={() => setCreating(false)}
+          onSave={(input) => create.mutate(input)}
+        />
       )}
     </div>
   )

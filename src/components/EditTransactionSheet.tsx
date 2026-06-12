@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { formatCOP, parseAmountInput } from '../lib/format'
-import type { Category, CategoryType, Transaction } from '../types'
+import type { Account, Category, CategoryType, Transaction } from '../types'
 
 interface Props {
   transaction: Transaction
   categories: Category[]
+  accounts: Account[]
   saving: boolean
   onCancel: () => void
   onSave: (patch: {
@@ -13,6 +14,7 @@ interface Props {
     category_id: string | null
     note: string | null
     occurred_at: string
+    account_id: string | null
   }) => void
 }
 
@@ -20,6 +22,7 @@ interface Props {
 export default function EditTransactionSheet({
   transaction,
   categories,
+  accounts,
   saving,
   onCancel,
   onSave,
@@ -27,11 +30,13 @@ export default function EditTransactionSheet({
   const [amountStr, setAmountStr] = useState(String(transaction.amount))
   const [type, setType] = useState<CategoryType>(transaction.type)
   const [categoryId, setCategoryId] = useState(transaction.category_id ?? '')
+  const [accountId, setAccountId] = useState(transaction.account_id ?? '')
   const [note, setNote] = useState(transaction.note ?? '')
   const [date, setDate] = useState(transaction.occurred_at)
 
   const amount = parseAmountInput(amountStr)
-  const typeCategories = categories.filter((c) => c.type === type)
+  const typeCategories = categories.filter((c) => c.type === type && !c.archived)
+  const selectableAccounts = accounts.filter((a) => !a.archived || a.id === transaction.account_id)
 
   return (
     <div className="sheet-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onCancel}>
@@ -98,6 +103,22 @@ export default function EditTransactionSheet({
           </label>
 
           <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Cuenta
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="rounded-xl bg-zinc-100 px-3 py-2.5 text-sm text-zinc-900 outline-none dark:bg-card-hover dark:text-zinc-100"
+            >
+              <option value="">Sin cuenta</option>
+              {selectableAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.icon} {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             Nota
             <input
               type="text"
@@ -137,6 +158,7 @@ export default function EditTransactionSheet({
                 category_id: categoryId || null,
                 note: note.trim() || null,
                 occurred_at: date,
+                account_id: accountId || null,
               })
             }
             className="flex-1 rounded-xl bg-emerald-500 py-3 text-sm font-semibold text-zinc-950 transition active:scale-95 disabled:opacity-40"

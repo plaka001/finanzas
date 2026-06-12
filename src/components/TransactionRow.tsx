@@ -1,19 +1,20 @@
 import { useRef, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { formatCOP } from '../lib/format'
-import type { Category, Transaction } from '../types'
+import type { Account, Category, Transaction } from '../types'
 
 const ACTIONS_WIDTH = 112
 
 interface Props {
   transaction: Transaction
   category?: Category
+  account?: Account
   onEdit: () => void
   onDelete: () => void
 }
 
 /** Fila de movimiento con swipe a la izquierda para editar/eliminar. */
-export default function TransactionRow({ transaction: t, category, onEdit, onDelete }: Props) {
+export default function TransactionRow({ transaction: t, category, account, onEdit, onDelete }: Props) {
   const [offset, setOffset] = useState(0)
   const startX = useRef(0)
   const startY = useRef(0)
@@ -46,6 +47,10 @@ export default function TransactionRow({ transaction: t, category, onEdit, onDel
   }
 
   const isExpense = t.type === 'expense'
+  const isTransfer = t.transfer_id !== null
+  const icon = isTransfer ? '🔁' : (category?.icon ?? '📦')
+  const name = isTransfer ? 'Transferencia' : (category?.name ?? 'Sin categoría')
+  const color = isTransfer ? '#71717a' : (category?.color ?? '#71717a')
 
   return (
     <div className="relative overflow-hidden border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
@@ -85,19 +90,29 @@ export default function TransactionRow({ transaction: t, category, onEdit, onDel
       >
         <span
           className="flex size-9 shrink-0 items-center justify-center rounded-full text-base"
-          style={{ backgroundColor: `${category?.color ?? '#71717a'}26` }}
+          style={{ backgroundColor: `${color}26` }}
         >
-          {category?.icon ?? '📦'}
+          {icon}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">
-            {category?.name ?? 'Sin categoría'}
-          </span>
-          {t.note && (
-            <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{t.note}</span>
+          <span className="block truncate text-sm font-medium">{name}</span>
+          {(t.note || account) && (
+            <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+              {account && (
+                <span style={{ color: account.color }}>
+                  {account.icon} {account.name}
+                </span>
+              )}
+              {account && t.note && ' · '}
+              {t.note}
+            </span>
           )}
         </span>
-        <span className={`tnum text-sm font-semibold ${isExpense ? 'text-rose-400' : 'text-emerald-400'}`}>
+        <span
+          className={`tnum text-sm font-semibold ${
+            isTransfer ? 'text-zinc-500 dark:text-zinc-400' : isExpense ? 'text-rose-400' : 'text-emerald-400'
+          }`}
+        >
           {isExpense ? '−' : '+'}
           {formatCOP(t.amount)}
         </span>

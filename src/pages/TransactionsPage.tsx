@@ -5,8 +5,9 @@ import { es } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatCOP } from '../lib/format'
-import { deleteTransaction, updateTransaction } from '../lib/transactions'
+import { deleteTransaction, deleteTransfer, updateTransaction } from '../lib/transactions'
 import { useCategories } from '../hooks/useCategories'
+import { useAccounts } from '../hooks/useAccounts'
 import TransactionRow from '../components/TransactionRow'
 import EditTransactionSheet from '../components/EditTransactionSheet'
 import type { Category, Transaction } from '../types'
@@ -20,6 +21,7 @@ interface Filters {
   to: string
   type: TypeFilter
   categoryId: string
+  accountId: string
   search: string
 }
 
@@ -31,6 +33,7 @@ function filteredQuery(columns: string, f: Filters) {
     .lte('occurred_at', f.to)
   if (f.type !== 'all') q = q.eq('type', f.type)
   if (f.categoryId) q = q.eq('category_id', f.categoryId)
+  if (f.accountId) q = q.eq('account_id', f.accountId)
   if (f.search) q = q.ilike('note', `%${f.search}%`)
   return q
 }
@@ -38,10 +41,12 @@ function filteredQuery(columns: string, f: Filters) {
 export default function TransactionsPage() {
   const queryClient = useQueryClient()
   const { data: categories = [] } = useCategories()
+  const { data: accounts = [] } = useAccounts()
 
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [categoryId, setCategoryId] = useState('')
+  const [accountId, setAccountId] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Transaction | null>(null)
@@ -56,14 +61,16 @@ export default function TransactionsPage() {
     to: format(endOfMonth(month), 'yyyy-MM-dd'),
     type: typeFilter,
     categoryId,
+    accountId,
     search,
   }
-  const filterKey = [filters.from, filters.type, filters.categoryId, filters.search]
+  const filterKey = [filters.from, filters.type, filters.categoryId, filters.accountId, filters.search]
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
     [categories],
   )
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
 
   const {
     data,
@@ -89,11 +96,12 @@ export default function TransactionsPage() {
   const { data: totals } = useQuery({
     queryKey: ['transactions', 'totals', ...filterKey],
     queryFn: async () => {
-      const { data, error } = await filteredQuery('amount, type', filters)
+      const { data, error } = await filteredQuery('amount, type, transfer_id', filters)
       if (error) throw error
       let income = 0
       let expense = 0
-      for (const t of data as unknown as Pick<Transaction, 'amount' | 'type'>[]) {
+      for (const t of data as unknown as Pick<Transaction, 'amount' | 'type' | 'transfer_id'>[]) {
+        if (t.transfer_id) continue // transferencias fuera de los totales
         if (t.type === 'income') income += t.amount
         else expense += t.amount
       }
@@ -104,10 +112,13 @@ export default function TransactionsPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['month-summary'] })
+    queryClient.invalidateQueries({ queryKey: ['account-activity'] })
+    queryClient.invalidateQueries({ queryKey: ['debts'] })
   }
 
   const deleteMutation = useMutation({
-    mutationFn: deleteTransaction,
+    mutationFn: (t: Transaction) =>
+      t.transfer_id ? deleteTransfer(t.transfer_id) : deleteTransaction(t.id),
     onSuccess: invalidate,
   })
 
@@ -145,8 +156,9 @@ export default function TransactionsPage() {
 
   const balance = (totals?.income ?? 0) - (totals?.expense ?? 0)
   const visibleCategories = categories.filter(
-    (c) => typeFilter === 'all' || c.type === typeFilter,
+    (c) => !c.archived && (typeFilter === 'all' || c.type === typeFilter),
   )
+  const visibleAccounts = accounts.filter((a) => !a.archived)
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-3">
@@ -218,6 +230,22 @@ export default function TransactionsPage() {
         </select>
       </div>
 
+      {visibleAccounts.length > 0 && (
+        <select
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+          aria-label="Filtrar por cuenta"
+          className="rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm outline-none dark:bg-card"
+        >
+          <option value="">Todas las cuentas</option>
+          {visibleAccounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.icon} {a.name}
+            </option>
+          ))}
+        </select>
+      )}
+
       <div className="flex rounded-xl bg-zinc-200 p-1 text-xs font-semibold dark:bg-card">
         {(
           [
@@ -263,9 +291,20 @@ export default function TransactionsPage() {
                     key={t.id}
                     transaction={t}
                     category={t.category_id ? categoryById.get(t.category_id) : undefined}
-                    onEdit={() => setEditing(t)}
+                    account={t.account_id ? accountById.get(t.account_id) : undefined}
+                    onEdit={() => {
+                      if (t.transfer_id) {
+                        if (confirm('Las transferencias no se editan. ¿Eliminar la transferencia completa (salida y entrada)?'))
+                          deleteMutation.mutate(t)
+                      } else {
+                        setEditing(t)
+                      }
+                    }}
                     onDelete={() => {
-                      if (confirm('¿Eliminar este movimiento?')) deleteMutation.mutate(t.id)
+                      const msg = t.transfer_id
+                        ? '¿Eliminar la transferencia completa (salida y entrada)?'
+                        : '¿Eliminar este movimiento?'
+                      if (confirm(msg)) deleteMutation.mutate(t)
                     }}
                   />
                 ))}
@@ -283,6 +322,7 @@ export default function TransactionsPage() {
         <EditTransactionSheet
           transaction={editing}
           categories={categories as Category[]}
+          accounts={accounts}
           saving={updateMutation.isPending}
           onCancel={() => setEditing(null)}
           onSave={(patch) => updateMutation.mutate({ id: editing.id, patch })}

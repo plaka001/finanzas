@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale'
 import { Delete, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { useCategories } from '../hooks/useCategories'
+import { defaultAccount, useAccounts } from '../hooks/useAccounts'
 import { formatCOP } from '../lib/format'
 import { removePending } from '../lib/offlineQueue'
 import { deleteTransaction, saveTransaction, type SaveResult } from '../lib/transactions'
@@ -24,6 +25,7 @@ export default function QuickAddPage() {
   const queryClient = useQueryClient()
   const { session } = useAuth()
   const { data: categories = [] } = useCategories()
+  const { data: accounts = [] } = useAccounts()
 
   const [digits, setDigits] = useState('')
   const [type, setType] = useState<CategoryType>('expense')
@@ -32,13 +34,18 @@ export default function QuickAddPage() {
   const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const [showAll, setShowAll] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [accountId, setAccountId] = useState<string | null>(null)
+  const [accountSheet, setAccountSheet] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const amount = digits ? parseInt(digits, 10) : 0
-  const frequent = categories.filter((c) => c.type === type && c.is_frequent)
-  const rest = categories.filter((c) => c.type === type && !c.is_frequent)
+  const activeCategories = categories.filter((c) => !c.archived)
+  const frequent = activeCategories.filter((c) => c.type === type && c.is_frequent)
+  const rest = activeCategories.filter((c) => c.type === type && !c.is_frequent)
   const visible = showAll ? [...frequent, ...rest] : frequent
+  const activeAccounts = accounts.filter((a) => !a.archived)
+  const account = activeAccounts.find((a) => a.id === accountId) ?? defaultAccount(accounts)
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
@@ -64,6 +71,8 @@ export default function QuickAddPage() {
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['month-summary'] })
     queryClient.invalidateQueries({ queryKey: ['pending-count'] })
+    queryClient.invalidateQueries({ queryKey: ['account-activity'] })
+    queryClient.invalidateQueries({ queryKey: ['debts'] })
   }
 
   async function save(category: Category) {
@@ -77,6 +86,7 @@ export default function QuickAddPage() {
         category_id: category.id,
         note: note.trim() || null,
         occurred_at: date,
+        account_id: account?.id ?? null,
       })
       invalidate()
       const label = `${formatCOP(amount)} · ${category.name}`
@@ -158,7 +168,16 @@ export default function QuickAddPage() {
         >
           {formatCOP(amount)}
         </p>
-        <div className="mt-3 flex items-center justify-center gap-2 text-xs">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
+          {account && (
+            <button
+              type="button"
+              onClick={() => setAccountSheet(true)}
+              className="max-w-32 truncate rounded-full bg-zinc-200 px-3 py-1.5 font-medium text-zinc-600 dark:bg-card dark:text-zinc-300"
+            >
+              {account.icon} {account.name}
+            </button>
+          )}
           <label className="relative rounded-full bg-zinc-200 px-3 py-1.5 font-medium text-zinc-600 dark:bg-card dark:text-zinc-300">
             📅 {dateLabel}
             <input
@@ -237,6 +256,48 @@ export default function QuickAddPage() {
           </button>
         ))}
       </div>
+
+      {accountSheet && (
+        <div
+          className="sheet-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          onClick={() => setAccountSheet(false)}
+        >
+          <div
+            className="sheet-panel w-full max-w-md rounded-t-3xl bg-white p-5 pb-safe dark:bg-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold">¿Con qué cuenta?</h2>
+            <div className="mt-3 flex flex-col gap-1">
+              {activeAccounts.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => {
+                    setAccountId(a.id)
+                    setAccountSheet(false)
+                  }}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                    a.id === account?.id
+                      ? 'bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400'
+                      : 'hover:bg-zinc-100 dark:hover:bg-card-hover'
+                  }`}
+                >
+                  <span
+                    className="flex size-8 items-center justify-center rounded-full text-base"
+                    style={{ backgroundColor: `${a.color}26` }}
+                  >
+                    {a.icon}
+                  </span>
+                  {a.name}
+                  {a.is_default && (
+                    <span className="ml-auto text-[10px] font-medium text-zinc-400">default</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="toast-in fixed inset-x-4 bottom-6 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-zinc-900 px-4 py-3 text-sm text-zinc-100 shadow-xl dark:bg-zinc-100 dark:text-zinc-900">

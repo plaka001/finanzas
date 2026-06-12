@@ -8,8 +8,9 @@ App personal de finanzas. React 18 + Vite + TypeScript + Tailwind + Supabase. Sp
 2. **Crear tu usuario:** Dashboard → Authentication → Users → *Add user* → email + contraseña (marca *Auto Confirm*).
 3. **Esquema:** Dashboard → SQL Editor → pega y ejecuta `supabase/migrations/001_schema.sql`.
 4. **Seed:** ejecuta `supabase/migrations/002_seed.sql` (toma tu usuario automáticamente; ejecutar UNA sola vez).
-5. **Deshabilitar signups:** Authentication → Sign In / Up → desactiva *Allow new users to sign up*.
-6. **Keys:** Project Settings → API → copia *Project URL* y *anon public key*.
+5. **CR01 — cuentas y CRUD:** ejecuta `supabase/migrations/004_accounts_crud.sql` (crea `accounts`, agrega `account_id`/`transfer_id`, columnas `archived`, trigger TC ↔ deuda, 3 cuentas seed y backfill; UNA sola vez).
+6. **Deshabilitar signups:** Authentication → Sign In / Up → desactiva *Allow new users to sign up*.
+7. **Keys:** Project Settings → API → copia *Project URL* y *anon public key*.
 
 ## Setup local
 
@@ -33,7 +34,7 @@ Abrir la URL en Safari → Compartir → **Agregar a pantalla de inicio**.
 
 - `src/auth/` — sesión Supabase (login, provider)
 - `src/components/` — layout, bottom nav
-- `src/pages/` — Inicio · Movimientos · Agregar (quick add) · Deudas (+detalle) · Metas · Reportes
+- `src/pages/` — Inicio · Movimientos · Agregar (quick add) · Deudas (+detalle) · Metas · Reportes · Cuentas · Recordatorios · Categorías
 - `src/lib/` — cliente Supabase, formato COP, cola offline, .ics, CSV, series de deuda
 - `supabase/migrations/` — esquema con RLS + triggers y seed con datos reales
 - `supabase/functions/` — Edge Function de recordatorios push (opcional, ver `docs/web-push.md`)

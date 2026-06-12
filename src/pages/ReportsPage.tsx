@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase'
 import { formatCOP } from '../lib/format'
 import { buildCsv, downloadCsv } from '../lib/csv'
 import { useCategories } from '../hooks/useCategories'
+import { useAccounts } from '../hooks/useAccounts'
 import type { Transaction } from '../types'
 
 type YearTx = Pick<Transaction, 'amount' | 'type' | 'category_id' | 'occurred_at'>
@@ -25,6 +26,7 @@ const MONTH_LABELS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 's
 
 export default function ReportsPage() {
   const { data: categories = [] } = useCategories()
+  const { data: accounts = [] } = useAccounts()
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [categoryId, setCategoryId] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -37,6 +39,7 @@ export default function ReportsPage() {
         .select('amount, type, category_id, occurred_at')
         .gte('occurred_at', `${year}-01-01`)
         .lte('occurred_at', `${year}-12-31`)
+        .is('transfer_id', null) // transferencias fuera de los reportes
       if (error) throw error
       return data
     },
@@ -53,7 +56,7 @@ export default function ReportsPage() {
     return rows
   }, [yearTx])
 
-  const expenseCategories = categories.filter((c) => c.type === 'expense')
+  const expenseCategories = categories.filter((c) => c.type === 'expense' && !c.archived)
   const selectedCategory = expenseCategories.find((c) => c.id === categoryId) ?? expenseCategories[0]
 
   // sin useMemo: el React Compiler lo memoiza solo
@@ -85,12 +88,14 @@ export default function ReportsPage() {
         .order('created_at', { ascending: false })
       if (error) throw error
       const byId = new Map(categories.map((c) => [c.id, c.name]))
+      const accountById = new Map(accounts.map((a) => [a.id, a.name]))
       const rows: string[][] = [
-        ['fecha', 'tipo', 'categoria', 'monto', 'nota'],
+        ['fecha', 'tipo', 'categoria', 'cuenta', 'monto', 'nota'],
         ...(data as Transaction[]).map((t) => [
           t.occurred_at,
-          t.type === 'expense' ? 'gasto' : 'ingreso',
+          t.transfer_id ? 'transferencia' : t.type === 'expense' ? 'gasto' : 'ingreso',
           t.category_id ? (byId.get(t.category_id) ?? '') : '',
+          t.account_id ? (accountById.get(t.account_id) ?? '') : '',
           String(t.amount),
           t.note ?? '',
         ]),
@@ -264,7 +269,7 @@ export default function ReportsPage() {
         {exporting ? 'Exportando…' : 'Exportar todos los movimientos (CSV)'}
       </button>
       <p className="-mt-2 text-center text-[10px] text-zinc-500 dark:text-zinc-400">
-        Columnas: fecha · tipo · categoría · monto · nota{' '}
+        Columnas: fecha · tipo · categoría · cuenta · monto · nota{' '}
         {format(new Date(), "'· generado' d MMM yyyy", { locale: es })}
       </p>
     </div>

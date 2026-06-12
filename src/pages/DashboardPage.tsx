@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { endOfMonth, format, isSameMonth, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { BarChart3, CalendarPlus, Check, LogOut, Moon, Sun, TrendingDown, TrendingUp, TriangleAlert } from 'lucide-react'
+import { BarChart3, BellRing, CalendarPlus, Check, ChevronRight, LogOut, Moon, Sun, Tags, TrendingDown, TrendingUp, TriangleAlert, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
 import { useAuth } from '../auth/AuthProvider'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useCategories } from '../hooks/useCategories'
 import { useDebts } from '../hooks/useDebts'
+import { accountBalance, defaultAccount, useAccountActivity, useAccounts } from '../hooks/useAccounts'
 import { supabase } from '../lib/supabase'
 import { formatCOP, parseAmountInput } from '../lib/format'
 import { computeUpcoming, type UpcomingPayment } from '../lib/upcoming'
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const queryClient = useQueryClient()
   const { data: categories = [] } = useCategories()
   const { data: debts = [] } = useDebts()
+  const { data: accounts = [] } = useAccounts()
+  const { data: accountActivity } = useAccountActivity()
   const [calendarSheet, setCalendarSheet] = useState(false)
 
   const today = new Date()
@@ -43,6 +46,7 @@ export default function DashboardPage() {
         .select('amount, type, category_id, note, occurred_at')
         .gte('occurred_at', monthStart)
         .lte('occurred_at', monthEnd)
+        .is('transfer_id', null) // transferencias fuera de los totales
       if (error) throw error
       return data
     },
@@ -80,6 +84,7 @@ export default function DashboardPage() {
         .select('amount, type, category_id, note, occurred_at')
         .gte('occurred_at', prevStart)
         .lte('occurred_at', prevEnd)
+        .is('transfer_id', null)
       if (error) throw error
       return data
     },
@@ -139,12 +144,13 @@ export default function DashboardPage() {
 
   const upcoming = useMemo(() => computeUpcoming(recurring, new Date()), [recurring])
 
+  const visibleDebts = useMemo(() => debts.filter((d) => !d.archived), [debts])
   const debtSeries = useMemo(() => {
     const debtFreeGoal = goals.find((g) => g.is_debt_free_goal)
     const target = debtFreeGoal?.deadline ? parseISO(debtFreeGoal.deadline) : new Date(2027, 2, 31)
-    return buildDebtSeries(debts, allDebtPayments, target)
-  }, [debts, allDebtPayments, goals])
-  const totalDebt = debts.reduce((sum, d) => sum + d.current_balance, 0)
+    return buildDebtSeries(visibleDebts, allDebtPayments, target)
+  }, [visibleDebts, allDebtPayments, goals])
+  const totalDebt = visibleDebts.reduce((sum, d) => sum + d.current_balance, 0)
 
   function isPaid({ payment, due }: UpcomingPayment): boolean {
     if (payment.debt_id) {
@@ -168,6 +174,7 @@ export default function DashboardPage() {
         if (amount <= 0) return
       }
       const paidAt = format(new Date(), 'yyyy-MM-dd')
+      const accountId = defaultAccount(accounts)?.id ?? null
       if (item.payment.debt_id) {
         const { error } = await supabase.from('debt_payments').insert({
           user_id: session.user.id,
@@ -175,6 +182,7 @@ export default function DashboardPage() {
           amount,
           kind: 'cuota',
           paid_at: paidAt,
+          account_id: accountId,
         })
         if (error) throw error
       } else {
@@ -185,6 +193,7 @@ export default function DashboardPage() {
           category_id: item.payment.category_id,
           note: item.payment.name,
           occurred_at: paidAt,
+          account_id: accountId,
         })
         if (error) throw error
       }
@@ -195,6 +204,7 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['debt-payments'] })
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       queryClient.invalidateQueries({ queryKey: ['goals'] })
+      queryClient.invalidateQueries({ queryKey: ['account-activity'] })
     },
   })
 
@@ -338,6 +348,37 @@ export default function DashboardPage() {
         )}
       </section>
 
+      {accounts.some((a) => !a.archived) && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+          <Link to="/cuentas" className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Cuentas</h2>
+            <ChevronRight className="size-4 text-zinc-400" />
+          </Link>
+          <ul className="mt-2 flex flex-col gap-2">
+            {accounts
+              .filter((a) => !a.archived)
+              .map((a) => {
+                const debtBalance = a.debt_id
+                  ? debts.find((d) => d.id === a.debt_id)?.current_balance ?? null
+                  : null
+                return (
+                  <li key={a.id} className="flex items-center gap-2 text-sm">
+                    <span className="text-base">{a.icon}</span>
+                    <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                    {debtBalance !== null ? (
+                      <span className="tnum font-semibold text-rose-400">{formatCOP(debtBalance)}</span>
+                    ) : (
+                      <span className="tnum font-semibold">
+                        {formatCOP(accountBalance(a, accountActivity))}
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+          </ul>
+        </section>
+      )}
+
       <section className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card md:col-span-2">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
@@ -445,6 +486,25 @@ export default function DashboardPage() {
             Sin referencia del mes anterior todavía.
           </p>
         )}
+      </section>
+
+      <section className="grid grid-cols-3 gap-2 md:col-span-2">
+        {(
+          [
+            ['/cuentas', 'Cuentas', Wallet],
+            ['/recordatorios', 'Recordatorios', BellRing],
+            ['/categorias', 'Categorías', Tags],
+          ] as const
+        ).map(([to, label, Icon]) => (
+          <Link
+            key={to}
+            to={to}
+            className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-3 text-xs font-medium text-zinc-600 shadow-sm transition active:scale-95 dark:bg-card dark:text-zinc-300"
+          >
+            <Icon className="size-5 text-zinc-400" />
+            {label}
+          </Link>
+        ))}
       </section>
 
       {calendarSheet && (

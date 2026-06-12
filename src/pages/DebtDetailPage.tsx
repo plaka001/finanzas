@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowLeft, PiggyBank, Receipt } from 'lucide-react'
+import { ArrowLeft, Pencil, PiggyBank, Receipt } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { supabase } from '../lib/supabase'
 import { formatCOP } from '../lib/format'
+import { archiveDebt, deleteDebt, updateDebt, type DebtInput } from '../lib/debts'
+import { defaultAccount, useAccounts } from '../hooks/useAccounts'
 import AmountDateSheet from '../components/AmountDateSheet'
+import DebtFormSheet from '../components/DebtFormSheet'
 import Celebration from '../components/Celebration'
 import type { Debt, DebtPayment, PaymentKind } from '../types'
 
@@ -20,7 +23,10 @@ export default function DebtDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { session } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { data: accounts = [] } = useAccounts()
   const [sheet, setSheet] = useState<PaymentKind | null>(null)
+  const [editing, setEditing] = useState(false)
   const [celebrating, setCelebrating] = useState(false)
 
   const { data: debt } = useQuery({
@@ -62,7 +68,17 @@ export default function DebtDetailPage() {
   }, [debt, payments])
 
   const registerPayment = useMutation({
-    mutationFn: async ({ amount, date, kind }: { amount: number; date: string; kind: PaymentKind }) => {
+    mutationFn: async ({
+      amount,
+      date,
+      kind,
+      accountId,
+    }: {
+      amount: number
+      date: string
+      kind: PaymentKind
+      accountId: string | null
+    }) => {
       if (!session || !debt) return false
       const { error } = await supabase.from('debt_payments').insert({
         user_id: session.user.id,
@@ -70,6 +86,7 @@ export default function DebtDetailPage() {
         amount,
         kind,
         paid_at: date,
+        account_id: accountId,
       })
       if (error) throw error
       return amount >= debt.current_balance
@@ -79,7 +96,40 @@ export default function DebtDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       queryClient.invalidateQueries({ queryKey: ['debt-payments'] })
       queryClient.invalidateQueries({ queryKey: ['goals'] })
+      queryClient.invalidateQueries({ queryKey: ['account-activity'] })
       if (paidOff) setCelebrating(true)
+    },
+  })
+
+  const invalidateDebts = () => {
+    queryClient.invalidateQueries({ queryKey: ['debts'] })
+    queryClient.invalidateQueries({ queryKey: ['recurring-payments'] })
+  }
+
+  const edit = useMutation({
+    mutationFn: (input: DebtInput) => {
+      if (!session || !debt) throw new Error('Sin sesión')
+      return updateDebt(session.user.id, debt.id, input)
+    },
+    onSuccess: () => {
+      setEditing(false)
+      invalidateDebts()
+    },
+  })
+
+  const archive = useMutation({
+    mutationFn: () => archiveDebt(debt!),
+    onSuccess: () => {
+      invalidateDebts()
+      navigate('/deudas')
+    },
+  })
+
+  const remove = useMutation({
+    mutationFn: () => deleteDebt(debt!),
+    onSuccess: () => {
+      invalidateDebts()
+      navigate('/deudas')
     },
   })
 
@@ -109,6 +159,14 @@ export default function DebtDetailPage() {
             Saldada
           </span>
         )}
+        <button
+          type="button"
+          aria-label="Editar deuda"
+          onClick={() => setEditing(true)}
+          className="ml-auto rounded-full p-2 text-zinc-500 transition hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-card"
+        >
+          <Pencil className="size-4" />
+        </button>
       </div>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
@@ -214,9 +272,25 @@ export default function DebtDetailPage() {
           title={sheet === 'cuota' ? `Registrar cuota — ${debt.name}` : `Abono a capital — ${debt.name}`}
           confirmLabel={sheet === 'cuota' ? 'Registrar cuota' : 'Registrar abono'}
           initialAmount={sheet === 'cuota' ? debt.monthly_payment : null}
+          accounts={accounts}
+          initialAccountId={defaultAccount(accounts)?.id ?? null}
           saving={registerPayment.isPending}
           onCancel={() => setSheet(null)}
-          onConfirm={({ amount, date }) => registerPayment.mutate({ amount, date, kind: sheet })}
+          onConfirm={({ amount, date, accountId }) =>
+            registerPayment.mutate({ amount, date, kind: sheet, accountId })
+          }
+        />
+      )}
+
+      {editing && (
+        <DebtFormSheet
+          debt={debt}
+          hasPayments={payments.length > 0}
+          saving={edit.isPending || archive.isPending || remove.isPending}
+          onCancel={() => setEditing(false)}
+          onSave={(input) => edit.mutate(input)}
+          onArchive={() => archive.mutate()}
+          onDelete={() => remove.mutate()}
         />
       )}
 

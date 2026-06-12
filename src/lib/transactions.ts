@@ -9,6 +9,7 @@ export interface NewTransaction {
   category_id: string | null
   note: string | null
   occurred_at: string
+  account_id: string | null
 }
 
 export type SaveResult =
@@ -40,8 +41,16 @@ export async function deleteTransaction(id: string): Promise<void> {
 
 export async function updateTransaction(
   id: string,
-  patch: Partial<Pick<Transaction, 'amount' | 'type' | 'category_id' | 'note' | 'occurred_at'>>,
+  patch: Partial<
+    Pick<Transaction, 'amount' | 'type' | 'category_id' | 'note' | 'occurred_at' | 'account_id'>
+  >,
 ): Promise<void> {
   const { error } = await supabase.from('transactions').update(patch).eq('id', id)
+  if (error) throw error
+}
+
+/** Elimina las dos patas de una transferencia. */
+export async function deleteTransfer(transferId: string): Promise<void> {
+  const { error } = await supabase.from('transactions').delete().eq('transfer_id', transferId)
   if (error) throw error
 }

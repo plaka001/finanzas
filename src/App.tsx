@@ -9,6 +9,9 @@ import DebtsPage from './pages/DebtsPage'
 import DebtDetailPage from './pages/DebtDetailPage'
 import GoalsPage from './pages/GoalsPage'
 import ReportsPage from './pages/ReportsPage'
+import AccountsPage from './pages/AccountsPage'
+import RemindersPage from './pages/RemindersPage'
+import CategoriesPage from './pages/CategoriesPage'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -32,6 +35,9 @@ export default function App() {
         <Route path="/deudas/:id" element={<DebtDetailPage />} />
         <Route path="/metas" element={<GoalsPage />} />
         <Route path="/reportes" element={<ReportsPage />} />
+        <Route path="/cuentas" element={<AccountsPage />} />
+        <Route path="/recordatorios" element={<RemindersPage />} />
+        <Route path="/categorias" element={<CategoriesPage />} />
       </Route>
       <Route path="/agregar" element={<QuickAddPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

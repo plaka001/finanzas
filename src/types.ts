@@ -2,6 +2,7 @@ export type CategoryType = 'expense' | 'income'
 export type DebtStatus = 'active' | 'paid_off'
 export type PaymentKind = 'cuota' | 'abono_capital'
 export type RecurringFrequency = 'monthly' | 'once' | 'yearly'
+export type AccountType = 'ahorros' | 'corriente' | 'tarjeta_credito' | 'efectivo' | 'otro'
 
 export interface Category {
   id: string
@@ -11,6 +12,19 @@ export interface Category {
   color: string
   is_frequent: boolean
   sort_order: number
+  archived: boolean
+}
+
+export interface Account {
+  id: string
+  name: string
+  type: AccountType
+  icon: string
+  color: string
+  initial_balance: number
+  debt_id: string | null
+  is_default: boolean
+  archived: boolean
 }
 
 export interface Transaction {
@@ -21,6 +35,8 @@ export interface Transaction {
   note: string | null
   occurred_at: string
   created_at: string
+  account_id: string | null
+  transfer_id: string | null
 }
 
 export interface Debt {
@@ -34,6 +50,7 @@ export interface Debt {
   end_date: string | null
   status: DebtStatus
   notes: string | null
+  archived: boolean
 }
 
 export interface DebtPayment {
@@ -42,6 +59,7 @@ export interface DebtPayment {
   amount: number
   kind: PaymentKind
   paid_at: string
+  account_id: string | null
 }
 
 export interface RecurringPayment {
@@ -65,6 +83,7 @@ export interface Goal {
   icon: string
   sort_order: number
   is_debt_free_goal: boolean
+  archived: boolean
 }
 
 export interface Settings {

@@ -10,6 +10,7 @@ export interface PendingTransaction {
   category_id: string | null
   note: string | null
   occurred_at: string
+  account_id: string | null
 }
 
 const DB_NAME = 'panorama'
