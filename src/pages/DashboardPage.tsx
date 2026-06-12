@@ -15,6 +15,7 @@ import { formatCOP, parseAmountInput } from '../lib/format'
 import { computeUpcoming, type UpcomingPayment } from '../lib/upcoming'
 import { buildDebtSeries } from '../lib/debtSeries'
 import { buildIcs, downloadIcs } from '../lib/ics'
+import { currentSubscription, enablePush, pushSupported } from '../lib/push'
 import DebtChart from '../components/DebtChart'
 import type { DebtPayment, Goal, RecurringPayment, Settings, Transaction } from '../types'
 
@@ -206,6 +207,18 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
       queryClient.invalidateQueries({ queryKey: ['account-activity'] })
     },
+  })
+
+  const { data: pushSub } = useQuery({
+    queryKey: ['push-subscription'],
+    queryFn: currentSubscription,
+    enabled: calendarSheet && pushSupported(),
+  })
+
+  const enablePushMut = useMutation({
+    mutationFn: () => enablePush(session!.user.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['push-subscription'] }),
+    onError: (e) => alert(e instanceof Error ? e.message : 'No se pudieron activar las notificaciones.'),
   })
 
   const budget = settings?.monthly_essential_budget ?? 0
@@ -527,6 +540,27 @@ export default function DashboardPage() {
               <li>Toca «Añadir todos» y elige tu calendario.</li>
               <li>Si tus pagos cambian, descarga e importa de nuevo.</li>
             </ol>
+            <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+              <h3 className="text-sm font-bold">Notificaciones push</h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                Aviso diario a las 8 AM con los pagos que vencen hoy o mañana. Requiere la app
+                instalada en pantalla de inicio (iOS 16.4+).
+              </p>
+              {pushSub ? (
+                <p className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-emerald-500">
+                  <Check className="size-4" /> Notificaciones activadas en este dispositivo
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={enablePushMut.isPending}
+                  onClick={() => enablePushMut.mutate()}
+                  className="mt-3 w-full rounded-xl bg-zinc-200 py-3 text-sm font-semibold text-zinc-700 transition active:scale-95 disabled:opacity-50 dark:bg-card-hover dark:text-zinc-200"
+                >
+                  {enablePushMut.isPending ? 'Activando…' : 'Activar notificaciones push'}
+                </button>
+              )}
+            </div>
             <div className="mt-5 flex gap-2">
               <button
                 type="button"

@@ -35,7 +35,13 @@ function dueOn(p: RecurringPayment, date: Date): boolean {
   return false
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Auth propia (la función se despliega sin verify_jwt): el cron debe enviar
+  // el header x-cron-key igual al secret CRON_SECRET de la función.
+  if (req.headers.get('x-cron-key') !== Deno.env.get('CRON_SECRET')) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,

@@ -1,73 +1,53 @@
-# Web Push — recordatorios de pagos (v2, opcional)
+# Web Push — recordatorios de pagos
 
-Tercera capa de recordatorios (las dos primeras ya funcionan: panel "Próximos pagos" del
-dashboard y el calendario .ics). Notificaciones push diarias a las 8 AM con los pagos que
-vencen hoy o mañana.
+Tercera capa de recordatorios (las dos primeras: panel "Próximos pagos" del dashboard y
+el calendario .ics). Notificación push diaria a las 8 AM con los pagos que vencen hoy o mañana.
 
 **Requisitos en iPhone:** iOS 16.4+, la PWA instalada en pantalla de inicio (no Safari),
 y permiso de notificaciones concedido desde la app.
 
-## 1. Generar llaves VAPID
+## Estado (2026-06-12) — activado, salvo secrets
+
+| Pieza | Estado |
+|---|---|
+| Tabla `push_subscriptions` (migración 003) | ✅ aplicada |
+| Edge function `payment-reminders` (v2, auth por `x-cron-key`) | ✅ desplegada |
+| Extensiones `pg_cron` + `pg_net` | ✅ habilitadas |
+| Cron `payment-reminders-daily` (`0 13 * * *` = 8 AM Bogotá) | ✅ programado |
+| Cliente: handler push (`public/push-sw.js` vía `workbox.importScripts`) | ✅ |
+| Cliente: botón "Activar notificaciones push" (sheet Calendario del dashboard) | ✅ |
+| `VITE_VAPID_PUBLIC_KEY` en `.env` | ✅ |
+| **Secrets de la edge function** (dashboard) | ⚠️ pendiente (manual) |
+| **`VITE_VAPID_PUBLIC_KEY` en Vercel** + redeploy | ⚠️ pendiente (manual) |
+
+## Secrets pendientes (Dashboard → Edge Functions → Secrets)
+
+- `VAPID_PUBLIC_KEY` — la pública (misma que `VITE_VAPID_PUBLIC_KEY` del `.env`)
+- `VAPID_PRIVATE_KEY` — la privada generada con `npx web-push generate-vapid-keys`
+- `VAPID_SUBJECT` — `mailto:marloncano1997@gmail.com`
+- `CRON_SECRET` — el mismo valor que envía el cron en el header `x-cron-key`
+  (ver `select command from cron.job where jobname = 'payment-reminders-daily'`)
+
+`SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase automáticamente.
+
+## Seguridad
+
+La función se despliega con `verify_jwt = false` porque pg_cron no envía JWT; en su lugar
+valida el header `x-cron-key` contra el secret `CRON_SECRET`. Si se rota el secret, cambiarlo
+en ambos lados (secrets de la función y `cron.schedule`).
+
+## Prueba manual
 
 ```bash
-npx web-push generate-vapid-keys
+curl -X POST https://elavnpyuwccuwrgfbkzm.supabase.co/functions/v1/payment-reminders \
+  -H "x-cron-key: <CRON_SECRET>"
 ```
 
-Guarda la pública y la privada. La pública también va al cliente (paso 5).
+Respuesta esperada: `{"sent":N,"messages":[...]}` (o `{"sent":0}` si nada vence hoy/mañana).
 
-## 2. Crear la tabla de suscripciones
+## Flujo en el dispositivo
 
-Ejecuta `supabase/migrations/003_push_subscriptions.sql` en el SQL Editor
-(solo la tabla y las policies; el bloque de cron va en el paso 4).
-
-## 3. Desplegar la Edge Function
-
-```bash
-supabase secrets set VAPID_PUBLIC_KEY=<publica> VAPID_PRIVATE_KEY=<privada> VAPID_SUBJECT=mailto:marloncanonotaloca@gmail.com
-supabase functions deploy payment-reminders
-```
-
-Prueba manual:
-
-```bash
-curl -X POST https://<PROJECT_REF>.functions.supabase.co/payment-reminders \
-  -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
-```
-
-## 4. Programar la ejecución diaria
-
-Habilita las extensiones `pg_cron` y `pg_net` (Dashboard → Database → Extensions) y
-ejecuta el bloque `cron.schedule` comentado al final de la migración 003
-(reemplaza `<PROJECT_REF>` y `<SERVICE_ROLE_KEY>`). `0 13 * * *` = 8:00 AM Bogotá.
-
-## 5. Cliente (pendiente de implementar)
-
-Dos piezas cuando se decida activar esto:
-
-1. **Service worker con handler de push.** `vite-plugin-pwa` debe pasar de `generateSW` a
-   `injectManifest` para poder añadir:
-
-   ```js
-   self.addEventListener('push', (event) => {
-     const { title, body } = event.data.json()
-     event.waitUntil(self.registration.showNotification(title, { body, icon: '/pwa-192x192.png' }))
-   })
-   ```
-
-2. **Botón "Activar notificaciones"** (en el sheet de Calendario del dashboard):
-
-   ```ts
-   const registration = await navigator.serviceWorker.ready
-   const sub = await registration.pushManager.subscribe({
-     userVisibleOnly: true,
-     applicationServerKey: VAPID_PUBLIC_KEY, // la pública del paso 1
-   })
-   const { endpoint, keys } = sub.toJSON()
-   await supabase.from('push_subscriptions').upsert(
-     { user_id: session.user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth },
-     { onConflict: 'endpoint' },
-   )
-   ```
-
-La spec marca esto como opcional y fuera del MVP; el servidor queda listo
-(función + tabla + cron documentado) y el cliente se conecta cuando haga falta.
+1. Instalar la PWA en pantalla de inicio y abrirla.
+2. Dashboard → botón "Calendario" → "Activar notificaciones push" → permitir.
+3. La suscripción queda en `push_subscriptions`; la función la limpia sola si el
+   dispositivo se desuscribe (404/410).
