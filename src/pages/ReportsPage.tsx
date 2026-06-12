@@ -100,7 +100,7 @@ export default function ReportsPage() {
           t.note ?? '',
         ]),
       ]
-      downloadCsv(buildCsv(rows), `panorama-movimientos-${format(new Date(), 'yyyy-MM-dd')}.csv`)
+      downloadCsv(buildCsv(rows), `la-caleta-movimientos-${format(new Date(), 'yyyy-MM-dd')}.csv`)
     } finally {
       setExporting(false)
     }

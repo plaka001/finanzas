@@ -5,6 +5,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Plus, Star } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { supabase } from '../lib/supabase'
 import { useCategories } from '../hooks/useCategories'
+import EmojiPicker from '../components/EmojiPicker'
 import type { Category, CategoryType } from '../types'
 
 interface CategoryForm {
@@ -293,27 +294,18 @@ function CategoryFormSheet({
             </div>
           )}
 
-          <div className="flex gap-3">
-            <label className="flex w-24 flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Ícono
-              <input
-                type="text"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="rounded-xl bg-zinc-100 px-3 py-2.5 text-center text-lg outline-none dark:bg-card-hover"
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Nombre
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Mascotas"
-                className="rounded-xl bg-zinc-100 px-3 py-2.5 text-sm text-zinc-900 outline-none dark:bg-card-hover dark:text-zinc-100"
-              />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Nombre
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Mascotas"
+              className="rounded-xl bg-zinc-100 px-3 py-2.5 text-sm text-zinc-900 outline-none dark:bg-card-hover dark:text-zinc-100"
+            />
+          </label>
+
+          <EmojiPicker value={icon} onChange={setIcon} />
 
           <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             Color

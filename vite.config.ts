@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
-        name: 'Panorama',
-        short_name: 'Panorama',
+        name: 'La Caleta',
+        short_name: 'La Caleta',
         description: 'Finanzas personales',
         lang: 'es',
         display: 'standalone',

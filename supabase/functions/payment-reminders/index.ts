@@ -8,6 +8,7 @@ import webpush from 'npm:web-push@3'
 
 interface RecurringPayment {
   id: string
+  user_id: string
   name: string
   amount: number | null
   due_day: number | null
@@ -19,6 +20,16 @@ interface RecurringPayment {
 function formatCOP(amount: number): string {
   return `$${amount.toLocaleString('es-CO')}`
 }
+
+// Títulos rotativos pa' que el recordatorio llegue con sabor
+const TITLES = [
+  '🦈 Pilas pues, tiburón',
+  '💵 La Caleta te avisa',
+  '🔥 ¡Que no se le pase, papacho!',
+  '👑 El que paga a tiempo manda',
+  '💸 Las lucas no se cuidan solas',
+  '🚀 Rumbo a deuda cero, mi líder',
+]
 
 /** ¿El pago vence en la fecha dada? (misma convención que el cliente) */
 function dueOn(p: RecurringPayment, date: Date): boolean {
@@ -55,7 +66,7 @@ Deno.serve(async (req) => {
 
   const { data: payments, error } = await supabase
     .from('recurring_payments')
-    .select('id, name, amount, due_day, due_date, frequency, active')
+    .select('id, user_id, name, amount, due_day, due_date, frequency, active')
     .eq('active', true)
   if (error) return new Response(error.message, { status: 500 })
 
@@ -64,14 +75,17 @@ Deno.serve(async (req) => {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
-  const messages: string[] = []
+  // Mensajes agrupados por usuario: cada quien recibe solo SUS pagos
+  const byUser = new Map<string, string[]>()
   for (const p of (payments ?? []) as RecurringPayment[]) {
     const monto = p.amount ? ` — ${formatCOP(p.amount)}` : ''
-    if (dueOn(p, today)) messages.push(`Hoy vence: ${p.name}${monto}`)
-    else if (dueOn(p, tomorrow)) messages.push(`Mañana vence: ${p.name}${monto}`)
+    let msg: string | null = null
+    if (dueOn(p, today)) msg = `Hoy vence: ${p.name}${monto}`
+    else if (dueOn(p, tomorrow)) msg = `Mañana vence: ${p.name}${monto}`
+    if (msg) byUser.set(p.user_id, [...(byUser.get(p.user_id) ?? []), msg])
   }
 
-  if (messages.length === 0) {
+  if (byUser.size === 0) {
     return new Response(JSON.stringify({ sent: 0 }), {
       headers: { 'Content-Type': 'application/json' },
     })
@@ -79,15 +93,17 @@ Deno.serve(async (req) => {
 
   const { data: subs } = await supabase
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
+    .select('id, user_id, endpoint, p256dh, auth')
 
   let sent = 0
   for (const sub of subs ?? []) {
+    const messages = byUser.get(sub.user_id)
+    if (!messages?.length) continue
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify({
-          title: 'Panorama — pagos próximos',
+          title: TITLES[Math.floor(Math.random() * TITLES.length)],
           body: messages.join('\n'),
         }),
       )
@@ -101,7 +117,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ sent, messages }), {
+  return new Response(JSON.stringify({ sent }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })

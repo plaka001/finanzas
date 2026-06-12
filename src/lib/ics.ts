@@ -29,9 +29,9 @@ export function buildIcs(payments: RecurringPayment[]): string {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Panorama//Pagos//ES',
+    'PRODID:-//La Caleta//Pagos//ES',
     'CALSCALE:GREGORIAN',
-    'X-WR-CALNAME:Pagos Panorama',
+    'X-WR-CALNAME:Pagos La Caleta',
   ]
 
   for (const p of payments) {
@@ -90,7 +90,7 @@ export function downloadIcs(content: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'panorama-pagos.ics'
+  a.download = 'la-caleta-pagos.ics'
   a.click()
   URL.revokeObjectURL(url)
 }

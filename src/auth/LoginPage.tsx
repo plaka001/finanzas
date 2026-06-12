@@ -25,7 +25,7 @@ export default function LoginPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-500/15">
             <Wallet className="size-8 text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-bold">Panorama</h1>
+          <h1 className="text-2xl font-bold">La Caleta</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Rumbo a deuda cero.</p>
         </div>
 

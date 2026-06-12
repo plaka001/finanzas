@@ -9,6 +9,7 @@ import { formatCOP, parseAmountInput } from '../lib/format'
 import { saveTransfer } from '../lib/transfers'
 import { accountBalance, useAccountActivity, useAccounts, type AccountActivity } from '../hooks/useAccounts'
 import { useDebts } from '../hooks/useDebts'
+import EmojiPicker from '../components/EmojiPicker'
 import type { Account, AccountType } from '../types'
 
 const TYPE_LABEL: Record<AccountType, string> = {
@@ -370,26 +371,17 @@ function AccountFormSheet({
             </label>
           )}
 
-          <div className="flex gap-3">
-            <label className="flex w-24 flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Ícono
-              <input
-                type="text"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="rounded-xl bg-zinc-100 px-3 py-2.5 text-center text-lg outline-none dark:bg-card-hover"
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Color
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="h-11 w-full rounded-xl bg-zinc-100 px-1 dark:bg-card-hover"
-              />
-            </label>
-          </div>
+          <EmojiPicker value={icon} onChange={setIcon} />
+
+          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Color
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="h-11 w-full rounded-xl bg-zinc-100 px-1 dark:bg-card-hover"
+            />
+          </label>
 
           {type !== 'tarjeta_credito' && (
             <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
